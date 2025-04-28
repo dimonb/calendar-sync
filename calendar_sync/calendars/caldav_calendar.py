@@ -1,37 +1,49 @@
 from caldav import DAVClient
+from calendar_sync.calendars.base import BaseCalendar
+from dateutil import parser as date_parser
 import logging
 import uuid
 
 logger = logging.getLogger(__name__)
 
-class CaldavCalendar:
-    def __init__(self, url):
+class CaldavCalendar(BaseCalendar):
+    def __init__(self, url, username=None, password=None):
+        super().__init__(calendar_id=f"caldav-{url}")
         self.url = url
-        self.client = DAVClient(url)
+        self.username = username
+        self.password = password
+        self.client = DAVClient(
+            url,
+            username=username,
+            password=password
+        )
         self.principal = self.client.principal()
-        self.calendar = self.principal.calendars()[0]  # TODO: сделать выбор нужного календаря
-
-        self.id = f"caldav-{self.url}"
+        self.calendar = self.principal.calendars()[0]  # TODO: сделать выбор календаря
 
     def list_events(self, time_min, time_max):
         """Вернуть список событий в формате [{'id': str, 'start': str, 'end': str}]"""
         results = []
-        events = self.calendar.date_search(
-            start=time_min,
-            end=time_max,
-            expand=True
+
+        start_dt = date_parser.isoparse(time_min)
+        end_dt = date_parser.isoparse(time_max)
+
+        events = self.calendar.search(
+            start=start_dt,
+            end=end_dt,
+            expand=True,
+            event=True
         )
 
         for event in events:
             try:
                 vevent = event.vobject_instance.vevent
                 results.append({
-                    'id': event.url,  # URL события как уникальный ID
+                    'id': event.url,
                     'start': vevent.dtstart.value.isoformat(),
                     'end': vevent.dtend.value.isoformat(),
                 })
-            except Exception as e:
-                logger.error(f"Failed to parse event: {e}")
+            except Exception:
+                logger.exception("Failed to parse event")
 
         return results
 
