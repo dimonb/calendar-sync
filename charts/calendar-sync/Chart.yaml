@@ -1,0 +1,6 @@
+apiVersion: v2
+name: calendar-sync
+description: Synchronize busy events across multiple calendars
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

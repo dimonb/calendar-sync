@@ -1,0 +1,21 @@
+image:
+  repository: ghcr.io/dimonb/calendar-sync
+  tag: latest
+  pullPolicy: IfNotPresent
+
+schedule: "*/5 * * * *"
+
+secrets:
+  googleCredentialsSecret: calendar-sync-secrets
+  microsoftCredentialsSecret: calendar-sync-secrets
+
+config:
+  configMapName: calendar-sync-config
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

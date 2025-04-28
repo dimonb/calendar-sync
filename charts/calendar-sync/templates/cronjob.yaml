@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: calendar-sync
+spec:
+  schedule: {{ .Values.schedule }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: calendar-sync
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            env:
+            - name: CONFIG_PATH
+              value: "/app/config.yaml"
+            volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+            - name: google-creds
+              mountPath: /app/google_credentials.json
+              subPath: google_credentials.json
+            - name: microsoft-creds
+              mountPath: /app/microsoft_credentials.json
+              subPath: microsoft_credentials.json
+            resources:
+              {{- toYaml .Values.resources | nindent 14 }}
+          restartPolicy: Never
+          volumes:
+          - name: config
+            configMap:
+              name: {{ .Values.config.configMapName }}
+          - name: google-creds
+            secret:
+              secretName: {{ .Values.secrets.googleCredentialsSecret }}
+          - name: microsoft-creds
+            secret:
+              secretName: {{ .Values.secrets.microsoftCredentialsSecret }}

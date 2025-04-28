@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: calendar-sync-config
+data:
+  config.yaml: |
+    calendars: []
+    sync_window_days: 21
