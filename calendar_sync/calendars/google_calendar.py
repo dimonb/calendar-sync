@@ -11,11 +11,15 @@ logger = logging.getLogger(__name__)
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
+@BaseCalendar.register
 class GoogleCalendar(BaseCalendar):
-    def __init__(self, calendar_id, credentials_path=None, token_path=None):
-        super().__init__(calendar_id=calendar_id)
-        self.credentials_path = credentials_path or '/app/credentials.json'
-        self.token_path = token_path or '/app/token.json'
+    type = 'google'
+    
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.id = cfg['id']
+        self.credentials_path = cfg['credentials_path'] or '/app/credentials.json'
+        self.token_path = cfg['token_path'] or '/app/token.json'
         self.service = self._authenticate()
 
     def _authenticate(self):
@@ -69,3 +73,11 @@ class GoogleCalendar(BaseCalendar):
         }
         created_event = self.service.events().insert(calendarId=self.id, body=event).execute()
         return created_event['id']
+
+    def delete_event(self, event_id):
+        """Удалить событие по его ID"""
+        try:
+            self.service.events().delete(calendarId=self.id, eventId=event_id).execute()
+            logger.info(f"Deleted busy event {event_id}")
+        except Exception:
+            logger.exception(f"Failed to delete busy event {event_id}")

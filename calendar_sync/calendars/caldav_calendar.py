@@ -8,15 +8,18 @@ import uuid
 logger = logging.getLogger(__name__)
 
 class CaldavCalendar(BaseCalendar):
-    def __init__(self, url, username=None, password=None):
-        super().__init__(calendar_id=f"caldav-{url}")
-        self.url = url
-        self.username = username
-        self.password = password
+    type = 'caldav'
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.url = cfg['url']
+        self.username = cfg['username']
+        self.password = cfg['password']
+        self.id = f"caldav-{self.url}"
         self.client = DAVClient(
-            url,
-            username=username,
-            password=password
+            self.url,
+            username=self.username,
+            password=self.password
         )
         self.principal = self.client.principal()
         self.calendar = self.principal.calendars()[0]  # TODO: сделать выбор календаря
@@ -38,11 +41,13 @@ class CaldavCalendar(BaseCalendar):
         for event in events:
             try:
                 vevent = event.vobject_instance.vevent
+                logger.debug (vevent)
                 results.append({
-                    'id': str(event.url),
+                    'id': str(vevent.uid.value),
                     'start': vevent.dtstart.value.isoformat(),
                     'end': vevent.dtend.value.isoformat(),
                     'summary': vevent.summary.value,
+                    'object': event 
                 })
             except Exception:
                 logger.exception("Failed to parse event")
@@ -72,3 +77,15 @@ class CaldavCalendar(BaseCalendar):
 
         self.calendar.add_event(busy_ics)
         return busy_id
+
+    def delete_event(self, event_id):
+        """Удалить событие по его ID"""
+        try:
+            event = self.calendar.event(event_id)
+            event.delete()
+            logger.info(f"Deleted busy event {event_id}")
+        except Exception:
+            logger.exception(f"Failed to delete busy event {event_id}")
+
+
+BaseCalendar.register(CaldavCalendar)

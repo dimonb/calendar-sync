@@ -11,3 +11,5 @@ class EventMapping(Base):
     target_calendar = Column(String, primary_key=True)
     busy_event_id = Column(String, nullable=False)
     last_synced_time = Column(DateTime)
+    start_time = Column(String, nullable=False)
+    end_time = Column(String, nullable=False)

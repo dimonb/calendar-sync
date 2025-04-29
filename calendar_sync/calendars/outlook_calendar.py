@@ -1,6 +1,9 @@
 from calendar_sync.calendars.base import BaseCalendar
 
+@BaseCalendar.register
 class OutlookCalendar(BaseCalendar):
+    type = 'outlook'
+
     def list_events(self, time_min, time_max):
         return []
 
