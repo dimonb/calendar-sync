@@ -1,4 +1,5 @@
 from caldav import DAVClient
+from icalendar import Calendar, Event
 from calendar_sync.calendars.base import BaseCalendar
 from dateutil import parser as date_parser
 import logging
@@ -38,9 +39,10 @@ class CaldavCalendar(BaseCalendar):
             try:
                 vevent = event.vobject_instance.vevent
                 results.append({
-                    'id': event.url,
+                    'id': str(event.url),
                     'start': vevent.dtstart.value.isoformat(),
                     'end': vevent.dtend.value.isoformat(),
+                    'summary': vevent.summary.value,
                 })
             except Exception:
                 logger.exception("Failed to parse event")
@@ -48,22 +50,25 @@ class CaldavCalendar(BaseCalendar):
         return results
 
     def create_busy_event(self, start, end, source_event_id=None):
-        """Создать событие типа Busy"""
         busy_id = str(uuid.uuid4())
-        busy_ics = f"""BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//calendar-sync//EN
-BEGIN:VEVENT
-UID:{busy_id}
-DTSTAMP:{start.replace('-', '').replace(':', '').replace('Z', '')}
-DTSTART:{start.replace('-', '').replace(':', '').replace('Z', '')}
-DTEND:{end.replace('-', '').replace(':', '').replace('Z', '')}
-SUMMARY:Busy
-DESCRIPTION:Managed-by: calendar-sync (source {source_event_id})
-STATUS:CONFIRMED
-TRANSP:OPAQUE
-END:VEVENT
-END:VCALENDAR
-"""
+
+        cal = Calendar()
+        cal.add('prodid', '-//calendar-sync//EN')
+        cal.add('version', '2.0')
+
+        event = Event()
+        event.add('uid', busy_id)
+        event.add('dtstamp', date_parser.isoparse(start))
+        event.add('dtstart', date_parser.isoparse(start))
+        event.add('dtend', date_parser.isoparse(end))
+        event.add('summary', 'Busy')
+        event.add('description', f'Managed-by: calendar-sync (source {source_event_id})')
+        event.add('status', 'CONFIRMED')
+        event.add('transp', 'OPAQUE')
+
+        cal.add_component(event)
+
+        busy_ics = cal.to_ical()
+
         self.calendar.add_event(busy_ics)
         return busy_id

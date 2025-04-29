@@ -21,6 +21,7 @@ dependencies = [
     "python-dateutil==2.9.0.post0",
     "python-dotenv>=1.0.1",
     "pyyaml>=6.0",
+    "icalendar>=6.1.3",
 ]
 
 [build-system]

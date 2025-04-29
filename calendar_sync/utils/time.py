@@ -1,8 +1,7 @@
 import datetime
 
-def get_time_window(weeks=3):
-    """Возвращает (time_min, time_max) для запроса событий."""
-    now = datetime.datetime.utcnow()
-    time_min = now.isoformat() + 'Z'
-    time_max = (now + datetime.timedelta(weeks=weeks)).isoformat() + 'Z'
+def get_time_window(days):
+    now = datetime.datetime.now(datetime.timezone.utc)
+    time_min = now.isoformat(timespec='seconds').replace('+00:00', 'Z')
+    time_max = (now + datetime.timedelta(days=days)).isoformat(timespec='seconds').replace('+00:00', 'Z')
     return time_min, time_max
