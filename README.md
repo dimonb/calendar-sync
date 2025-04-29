@@ -100,6 +100,7 @@ helm upgrade --install calendar-sync ./charts/calendar-sync \
 calendars:
   - type: google
     id: your-google-calendar-id
+    onlysource: true  # этот календарь используется только как источник событий
   - type: outlook
     id: your-outlook-calendar-id
   - type: caldav
@@ -107,6 +108,8 @@ calendars:
 
 sync_window_days: 21
 ```
+
+> `onlysource: true` — опциональный флаг. Если установлен, то календарь используется только как источник событий и в него не создаются Busy-события.
 
 ---
 
