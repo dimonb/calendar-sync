@@ -100,7 +100,7 @@ helm upgrade --install calendar-sync ./charts/calendar-sync \
 calendars:
   - type: google
     id: your-google-calendar-id
-    onlysource: true  # этот календарь используется только как источник событий
+    onlysource: true
   - type: outlook
     id: your-outlook-calendar-id
   - type: caldav
