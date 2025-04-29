@@ -176,3 +176,4 @@ config.yaml
 calendar_sync.db
 *token*.json
 *secret*.json
+.kube_config
