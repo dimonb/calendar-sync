@@ -12,9 +12,7 @@ WORKDIR /app
 
 # Копируем файлы проекта
 COPY pyproject.toml .
-COPY calendar-sync/ calendar-sync/
-COPY sync.py sync.py
-COPY config.py config.py
+COPY calendar_sync/ calendar_sync/
 
 # Устанавливаем зависимости через pip
 RUN pip install --no-cache-dir .
@@ -26,4 +24,4 @@ RUN mkdir -p /data
 ENV PYTHONPATH=/app
 
 # Стартовая команда
-CMD ["python", "sync.py"]
+CMD ["python", "-m", "calendar_sync"]
