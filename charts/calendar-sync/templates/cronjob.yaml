@@ -26,6 +26,9 @@ spec:
             - name: google-creds
               mountPath: /data/google_client_secret.json
               subPath: google_client_secret.json
+            - name: google-creds2
+              mountPath: /data/google_client_secret2.json
+              subPath: google_client_secret2.json
             resources:
               {{- toYaml .Values.resources | nindent 14 }}
           restartPolicy: Never
@@ -36,6 +39,9 @@ spec:
           - name: google-creds
             secret:
               secretName: {{ .Values.secrets.googleCredentialsSecret.name }}
+          - name: google-creds2
+            secret:
+              secretName: {{ .Values.secrets.googleCredentialsSecret2.name }}
           - name: data
             persistentVolumeClaim:
               claimName: {{ .Values.pvc.name }}

@@ -73,4 +73,5 @@ jobs:
         helm upgrade --create-namespace -n calendar-sync calendar-sync charts/calendar-sync \
           --set-string config.content=${{ secrets.CALENDAR_SYNC_CONFIG }} \
           --set-string secrets.googleCredentialsSecret.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+          --set-string secrets.googleCredentialsSecret2.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET2 }} \
           --set-string image.tag=${{ steps.vars.outputs.hash }}

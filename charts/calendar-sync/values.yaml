@@ -10,6 +10,11 @@ secrets:
     name: calendar-sync-secrets
     data:
       google_client_secret: 
+      
+  googleCredentialsSecret2:
+    name: calendar-sync-secrets2
+    data:
+      google_client_secret:
 
   ghcrSecret:
     name: ghcr-secret
