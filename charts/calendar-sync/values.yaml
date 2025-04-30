@@ -1,16 +1,26 @@
 image:
-  repository: ghcr.io/dimonb/calendar-sync
+  repository: ghcr.io/dimonb/calendar-sync/calendar-sync
   tag: latest
   pullPolicy: IfNotPresent
 
 schedule: "*/5 * * * *"
 
 secrets:
-  googleCredentialsSecret: calendar-sync-secrets
-  microsoftCredentialsSecret: calendar-sync-secrets
+  googleCredentialsSecret: 
+    name: calendar-sync-secrets
+    data:
+      google_client_secret: 
+
+  ghcrSecret:
+    name: ghcr-secret
+    data:
+      dockerconfigjson: 
 
 config:
   configMapName: calendar-sync-config
+  content:
+
+sync_window_days: 14
 
 resources:
   requests:
@@ -19,3 +29,9 @@ resources:
   limits:
     cpu: 200m
     memory: 256Mi
+
+pvc:
+  name: calendar-sync-pvc
+  accessMode: ReadWriteOnce
+  storageClassName: 
+  size: 1Gi

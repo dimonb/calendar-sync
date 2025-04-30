@@ -3,10 +3,11 @@ kind: CronJob
 metadata:
   name: calendar-sync
 spec:
-  schedule: {{ .Values.schedule }}
+  schedule: {{ .Values.schedule | quote }}
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
+      ttlSecondsAfterFinished: 600
       template:
         spec:
           containers:
@@ -15,27 +16,26 @@ spec:
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             env:
             - name: CONFIG_PATH
-              value: "/app/config.yaml"
+              value: "/data/config.yaml"
             volumeMounts:
+            - name: data
+              mountPath: /data
             - name: config
-              mountPath: /app/config.yaml
+              mountPath: /data/config.yaml
               subPath: config.yaml
             - name: google-creds
-              mountPath: /app/google_credentials.json
-              subPath: google_credentials.json
-            - name: microsoft-creds
-              mountPath: /app/microsoft_credentials.json
-              subPath: microsoft_credentials.json
+              mountPath: /data/google_client_secret.json
+              subPath: google_client_secret.json
             resources:
               {{- toYaml .Values.resources | nindent 14 }}
           restartPolicy: Never
           volumes:
           - name: config
-            configMap:
-              name: {{ .Values.config.configMapName }}
+            secret:
+              secretName: {{ .Values.config.configMapName }}
           - name: google-creds
             secret:
-              secretName: {{ .Values.secrets.googleCredentialsSecret }}
-          - name: microsoft-creds
-            secret:
-              secretName: {{ .Values.secrets.microsoftCredentialsSecret }}
+              secretName: {{ .Values.secrets.googleCredentialsSecret.name }}
+          - name: data
+            persistentVolumeClaim:
+              claimName: {{ .Values.pvc.name }}

@@ -47,3 +47,25 @@ jobs:
           ghcr.io/${{ github.repository }}/calendar-sync:latest
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3 
+      with:
+        version: 'latest'
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v4.3.0
+      with:
+        version: 'latest'
+
+    - name: Write kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
+
+    - name: Deploy to Kubernetes
+      run: |
+        helm upgrade --create-namespace -n calendar-sync calendar-sync charts/calendar-sync \
+          --set-string config.content=${{ secrets.CALENDAR_SYNC_CONFIG }} \
+          --set-string secrets.googleCredentialsSecret.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }} 
