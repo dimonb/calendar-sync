@@ -23,11 +23,15 @@ jobs:
     - name: Log in to GHCR
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+    - name: Compute hash
+      id: vars
+      run: echo "hash=$(echo ${{ hashFiles('calendar_sync/**', 'Dockerfile', 'pyproject.toml') }})" >> $GITHUB_OUTPUT
+
     - name: Cache Docker layers
       uses: actions/cache@v4
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ hashFiles('calendar_sync/**', 'Dockerfile', 'pyproject.toml') }}
+        key: ${{ runner.os }}-buildx-${{ steps.vars.outputs.hash }}
         restore-keys: |
           ${{ runner.os }}-buildx-
 
@@ -43,7 +47,7 @@ jobs:
         push: true
         tags: |
           ghcr.io/${{ github.repository }}/calendar-sync:${{ github.sha }} 
-          ghcr.io/${{ github.repository }}/calendar-sync:${{ hashFiles('calendar_sync/**', 'Dockerfile', 'pyproject.toml') }}
+          ghcr.io/${{ github.repository }}/calendar-sync:${{ steps.vars.outputs.hash }}
           ghcr.io/${{ github.repository }}/calendar-sync:latest
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
@@ -68,4 +72,5 @@ jobs:
       run: |
         helm upgrade --create-namespace -n calendar-sync calendar-sync charts/calendar-sync \
           --set-string config.content=${{ secrets.CALENDAR_SYNC_CONFIG }} \
-          --set-string secrets.googleCredentialsSecret.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }} 
+          --set-string secrets.googleCredentialsSecret.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+          --set-string image.tag=${{ steps.vars.outputs.hash }}
