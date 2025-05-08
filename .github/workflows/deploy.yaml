@@ -25,7 +25,7 @@ jobs:
 
     - name: Compute hash
       id: vars
-      run: echo "hash=$(echo ${{ hashFiles('calendar_sync/**', 'Dockerfile', 'pyproject.toml') }})" >> $GITHUB_OUTPUT
+      run: echo "hash=$(echo ${{ hashFiles('calendar_sync/**', 'Dockerfile', 'pyproject.toml', 'poetry.lock') }})" >> $GITHUB_OUTPUT
 
     - name: Cache Docker layers
       uses: actions/cache@v4

@@ -27,4 +27,4 @@ RUN mkdir -p /data
 ENV PYTHONPATH=/app
 
 # Стартовая команда
-CMD ["poe", "app"]
+CMD ["poetry", "run", "poe", "app"]
