@@ -26,16 +26,19 @@ class GoogleCalendar(BaseCalendar):
         creds = None
 
         if os.path.exists(self.token_path):
-            creds = Credentials.from_authorized_user_file(self.token_path, SCOPES)
+            try:
+                creds = Credentials.from_authorized_user_file(self.token_path, SCOPES)
+                if creds and creds.expired and creds.refresh_token:
+                    logger.info(f"Refreshing OAuth2 token for {self.id}...")
+                    creds.refresh(Request())
+            except Exception as e:
+                logger.warning(f"Failed to refresh token for {self.id}: {str(e)}")
+                creds = None
 
         if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                logger.info(f"Refreshing OAuth2 token for {self.id}...")
-                creds.refresh(Request())
-            else:
-                logger.info(f"Starting OAuth2 flow for {self.id}...")
-                flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, SCOPES)
-                creds = flow.run_local_server(port=0)
+            logger.info(f"Starting new OAuth2 flow for {self.id}...")
+            flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, SCOPES)
+            creds = flow.run_local_server(port=0)
             with open(self.token_path, 'w') as token_file:
                 token_file.write(creds.to_json())
 

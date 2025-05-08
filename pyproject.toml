@@ -8,21 +8,7 @@ authors = [
     { name="Dmitrii Balabanov", email="dimonb@gmail.com" }
 ]
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "google-api-python-client==2.167.0",
-    "google-auth==2.39.0",
-    "google-auth-httplib2==0.2.0",
-    "google-auth-oauthlib==1.2.2",
-    "O365==2.1.2",
-    "caldav==1.4.0",
-    "SQLAlchemy==2.0.40",
-    "pytz==2025.2",
-    "python-dateutil==2.9.0.post0",
-    "python-dotenv>=1.0.1",
-    "pyyaml>=6.0",
-    "icalendar>=6.1.3",
-]
+requires-python = ">=3.13,<4.0"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -30,3 +16,24 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["calendar_sync"]
+
+[tool.poetry.group.dev.dependencies]
+poetry = "^2.1.3"
+poethepoet = "^0.34.0"
+
+
+[tool.poetry.dependencies]
+caldav = "^1.4.0"
+google-api-python-client = "^2.169.0"
+pytz = "^2025.2"
+icalendar = "^6.2.0"
+sqlalchemy = "^2.0.40"
+python-dotenv = "^1.1.0"
+pyyaml = "^6.0.2"
+python-dateutil = "^2.9.0.post0"
+google-auth = "^2.40.1"
+google-auth-httplib2 = "^0.2.0"
+google-auth-oauthlib = "^1.2.2"
+
+[tool.poe.tasks.app]
+cmd = "python -m calendar_sync"

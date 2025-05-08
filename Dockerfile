@@ -12,10 +12,13 @@ WORKDIR /app
 
 # Копируем файлы проекта
 COPY pyproject.toml .
+COPY poetry.lock .
+COPY README.md .
 COPY calendar_sync/ calendar_sync/
 
 # Устанавливаем зависимости через pip
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir poetry
+RUN poetry install
 
 # Делаем директорию для SQLite базы, если нужно
 RUN mkdir -p /data
@@ -24,4 +27,4 @@ RUN mkdir -p /data
 ENV PYTHONPATH=/app
 
 # Стартовая команда
-CMD ["python", "-m", "calendar_sync"]
+CMD ["poe", "app"]
