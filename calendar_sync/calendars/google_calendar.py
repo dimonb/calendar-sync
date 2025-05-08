@@ -31,6 +31,9 @@ class GoogleCalendar(BaseCalendar):
                 if creds and creds.expired and creds.refresh_token:
                     logger.info(f"Refreshing OAuth2 token for {self.id}...")
                     creds.refresh(Request())
+                    # Save refreshed token
+                    with open(self.token_path, 'w') as token_file:
+                        token_file.write(creds.to_json())
             except Exception as e:
                 logger.warning(f"Failed to refresh token for {self.id}: {str(e)}")
                 creds = None
