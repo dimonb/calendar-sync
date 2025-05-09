@@ -8,6 +8,9 @@ schedule: "*/5 * * * *"
 uptrace:
   dsn: 
 
+
+deployEnv: "development"
+
 secrets:
   googleCredentialsSecret: 
     name: calendar-sync-secrets

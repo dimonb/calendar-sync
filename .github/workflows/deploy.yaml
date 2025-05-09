@@ -75,4 +75,5 @@ jobs:
           --set-string secrets.googleCredentialsSecret.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
           --set-string secrets.googleCredentialsSecret2.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET2 }} \
           --set-string uptrace.dsn=${{ secrets.UPTRACE_DSN }} \
-          --set-string image.tag=${{ steps.vars.outputs.hash }}
+          --set-string image.tag=${{ steps.vars.outputs.hash }} \
+          --set-string deployEnv=production
