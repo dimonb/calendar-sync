@@ -21,6 +21,8 @@ spec:
               value: {{ .Values.uptrace.dsn | quote }}
             - name: DEPLOY_ENV
               value: {{ .Values.deployEnv | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
             volumeMounts:
             - name: data
               mountPath: /data

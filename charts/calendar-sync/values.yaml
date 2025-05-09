@@ -10,6 +10,7 @@ uptrace:
 
 
 deployEnv: "development"
+logLevel: "DEBUG"
 
 secrets:
   googleCredentialsSecret: 
