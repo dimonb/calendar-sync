@@ -22,10 +22,10 @@ class CaldavCalendar(BaseCalendar):
             password=self.password
         )
         self.principal = self.client.principal()
-        self.calendar = self.principal.calendars()[0]  # TODO: сделать выбор календаря
+        self.calendar = self.principal.calendars()[0]  # TODO: implement calendar selection
 
     def list_events(self, time_min, time_max):
-        """Вернуть список событий в формате [{'id': str, 'start': str, 'end': str}]"""
+        """Return a list of events in the format [{'id': str, 'start': str, 'end': str}]"""
         results = []
 
         start_dt = date_parser.isoparse(time_min)
@@ -79,7 +79,7 @@ class CaldavCalendar(BaseCalendar):
         return busy_id
 
     def delete_event(self, event_id):
-        """Удалить событие по его ID"""
+        """Delete an event by its ID"""
         try:
             event = self.calendar.event(event_id)
             event.delete()

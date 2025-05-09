@@ -48,7 +48,7 @@ class GoogleCalendar(BaseCalendar):
         return build('calendar', 'v3', credentials=creds)
 
     def list_events(self, time_min, time_max):
-        """Вернуть список событий"""
+        """Return a list of events"""
         events_result = self.service.events().list(
             calendarId=self.id,
             timeMin=time_min,
@@ -69,7 +69,7 @@ class GoogleCalendar(BaseCalendar):
         return results
 
     def create_busy_event(self, start, end, source_event_id=None):
-        """Создать событие типа Busy"""
+        """Create a Busy event"""
         event = {
             'summary': 'Busy',
             'description': f'Managed-by: calendar-sync (source {source_event_id})',
@@ -81,7 +81,7 @@ class GoogleCalendar(BaseCalendar):
         return created_event['id']
 
     def delete_event(self, event_id):
-        """Удалить событие по его ID"""
+        """Delete an event by its ID"""
         try:
             self.service.events().delete(calendarId=self.id, eventId=event_id).execute()
             logger.info(f"Deleted busy event {event_id}")

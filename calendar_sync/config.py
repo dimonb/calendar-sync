@@ -1,4 +1,4 @@
-"""Centralised configuration and logging setup."""
+"""Centralized configuration and logging setup."""
 from __future__ import annotations
 
 import os
@@ -48,7 +48,6 @@ class Settings(BaseSettings):
         env_file = None        # already loaded manually via dotenv
 
 
-
 settings = Settings()  # triggers validation
 
 # Convert textual log level to numeric constant once
@@ -70,7 +69,7 @@ def _jsonify_record(
     _method: str,
     event_dict: MutableMapping[str, Any],
 ) -> Mapping[str, Any]:
-    """Convert stdlib LogRecord into a JSON‑serialisable subset."""
+    """Convert stdlib LogRecord into a JSON‑serializable subset."""
     record = event_dict.get("_record")
     if record is not None and not isinstance(record, dict):
         event_dict["_record"] = {
@@ -83,7 +82,7 @@ def _jsonify_record(
     return event_dict
 
 def configure_logging() -> None:
-    """Init structlog + stdlib logging (JSON or colorful console)."""
+    """Initialize structlog + stdlib logging (JSON or colorful console)."""
     if settings.json_log:
         renderer = structlog.processors.JSONRenderer()
     else:
