@@ -1,26 +1,26 @@
-
+# calendar-sync
 
 ![CI](https://github.com/dimonb/calendar-sync/actions/workflows/build.yml/badge.svg)
 
-Сервис для автоматической синхронизации занятости между календарями разных систем (Google Calendar, Outlook, CalDAV и другие).
+Service for automatic synchronization of "Busy" events between calendars in different systems (Google Calendar, Outlook, CalDAV, etc).
 
-Если в одном календаре появляется встреча — сервис ставит соответствующее `Busy` событие в остальные календари.
-
----
-
-## Особенности
-
-- Поддержка Google Calendar, Microsoft 365 (Outlook), CalDAV.
-- Отслеживание событий только на ближайшие 3 недели.
-- Корректная работа с повторяющимися событиями (recurring events).
-- Умная синхронизация: создание и удаление `Busy`-событий.
-- Устойчивый к сбоям деплой в Kubernetes через Helm.
-- База данных на SQLite для отслеживания синхронизированных событий.
-- Полная автоматизация CI/CD через GitHub Actions.
+If a meeting appears in one of your calendars, the service creates a corresponding `Busy` event in all other connected calendars.
 
 ---
 
-## Архитектура
+## Features
+
+- Supports Google Calendar, Microsoft 365 (Outlook), and CalDAV.
+- Watches for events only in the next N days (configurable via `sync_window_days`).
+- Correctly handles recurring events.
+- Smart synchronization: automatically creates and deletes `Busy` events as needed.
+- Reliable, production-ready deployment in Kubernetes via Helm.
+- Uses SQLite database to track synced events and prevent duplication.
+- Full automation of CI/CD via GitHub Actions.
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -44,9 +44,9 @@ flowchart TD
 
 ---
 
-## Установка
+## Installation
 
-### 1. Клонирование репозитория
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/dimonb/calendar-sync.git
@@ -55,7 +55,7 @@ cd calendar-sync
 
 ---
 
-### 2. Сборка образа Docker
+### 2. Build the Docker image
 
 ```bash
 docker build -t calendar-sync .
@@ -63,26 +63,27 @@ docker build -t calendar-sync .
 
 ---
 
-### 3. Настройка Kubernetes
+### 3. Prepare Kubernetes secrets and configmap
 
-Подготовить секреты и configmap:
+Set up the required secrets and configuration map:
 
 ```bash
 kubectl create namespace calendar-sync
 
-# Секреты с кредами доступа
+# Secrets with credential files
 kubectl create secret generic calendar-sync-secrets -n calendar-sync \
   --from-file=google_credentials.json \
   --from-file=microsoft_credentials.json
 
-# ConfigMap с конфигурацией календарей
+# ConfigMap with calendar configuration
+touch config.yaml # (edit accordingly if needed)
 kubectl create configmap calendar-sync-config -n calendar-sync \
   --from-file=config.yaml
 ```
 
 ---
 
-### 4. Деплой через Helm
+### 4. Deploy with Helm
 
 ```bash
 helm upgrade --install calendar-sync ./charts/calendar-sync \
@@ -92,28 +93,34 @@ helm upgrade --install calendar-sync ./charts/calendar-sync \
 
 ---
 
-## Конфигурация
+## Configuration
 
-**`config.yaml` пример:**
+**Sample `config.yaml`**
 
 ```yaml
 calendars:
   - type: google
     id: your-google-calendar-id
+    credentials_path: /data/google_client_secret.json
+    token_path: /data/token.json
     onlysource: true
   - type: outlook
     id: your-outlook-calendar-id
   - type: caldav
     url: https://caldav.example.com/user/calendars/personal/
 
-sync_window_days: 21
+sync_window_days: 14
 ```
 
-> `onlysource: true` — опциональный флаг. Если установлен, то календарь используется только как источник событий и в него не создаются Busy-события.
+> `onlysource: true` is an optional flag. When set, this calendar is only used as a source of events and no Busy events will be created in it.
+
+Notes:
+- For Google Calendar integration, you must provide valid `credentials_path` and `token_path` (see Google documentation for preparing OAuth credentials).
+- For CalDAV support, you must provide the `url`, `username`, and `password` in the calendar block.
 
 ---
 
-**`values.yaml` пример для Helm:**
+**Sample `values.yaml` for Helm**
 
 ```yaml
 image:
@@ -123,8 +130,14 @@ image:
 schedule: "*/5 * * * *"
 
 secrets:
-  googleCredentialsSecret: calendar-sync-secrets
-  microsoftCredentialsSecret: calendar-sync-secrets
+  googleCredentialsSecret:
+    name: calendar-sync-secrets
+    data:
+      google_client_secret: <base64 encoded secret>
+  microsoftCredentialsSecret:
+    name: calendar-sync-secrets
+    data:
+      microsoft_client_secret: <base64 encoded secret>
 
 config:
   configMapName: calendar-sync-config
@@ -134,31 +147,48 @@ config:
 
 ## CI/CD
 
-- При пуше в `main`:
-  - Собирается Docker образ.
-  - Публикуется в GitHub Container Registry `ghcr.io/dimonb/calendar-sync`.
-  - Автоматически деплоится в Kubernetes через Helm.
+- On push to `main`:
+  - Docker image is built
+  - Published to GitHub Container Registry `ghcr.io/dimonb/calendar-sync`
+  - Automatically deployed to Kubernetes using Helm
 
 ---
 
-## Требования
+## Requirements
 
 - Python 3.11+
 - Kubernetes 1.21+
 - Helm 3+
-- Рабочий kubeconfig или токен для доступа к кластеру
-- Доступ в GHCR для получения образов
+- Working kubeconfig or access token for your cluster
+- Access to GitHub Container Registry (GHCR) for downloading images
 
 ---
 
-## Лицензия
+## License
 
-MIT License.  
-Свободно используйте и модифицируйте.
+MIT License. 
+Feel free to use and modify.
 
 ---
 
-## Авторы
+## Authors
 
 - [Dmitrii Balabanov](https://github.com/dimonb)
 
+---
+
+## FAQ / Troubleshooting
+
+- **Google Calendar setup:**
+  - The service requires OAuth2 credentials. See Google's official documentation to create client credentials and download as `client_secret.json`.
+  - The first time you run calendar-sync it will prompt your browser for consent. The resulting token is cached in the `token.json` or whatever path you set as `token_path`.
+
+- **CalDAV setup:**
+  - Some CalDAV providers require app-specific passwords or two-factor authentication adjustments. Make sure your credentials work in your CalDAV client before using them in calendar-sync.
+
+- **How do I only sync FROM one calendar?**
+  - Use `onlysource: true` in the config.
+
+---
+
+For issues, discussions, and updates: see the [GitHub repository](https://github.com/dimonb/calendar-sync).
