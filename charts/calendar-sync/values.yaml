@@ -5,6 +5,9 @@ image:
 
 schedule: "*/5 * * * *"
 
+uptrace:
+  dsn: 
+
 secrets:
   googleCredentialsSecret: 
     name: calendar-sync-secrets

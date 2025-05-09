@@ -17,6 +17,8 @@ spec:
             env:
             - name: CONFIG_PATH
               value: "/data/config.yaml"
+            - name: UPTRACE_DSN
+              value: {{ .Values.uptrace.dsn | quote }}
             volumeMounts:
             - name: data
               mountPath: /data
