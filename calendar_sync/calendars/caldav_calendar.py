@@ -41,7 +41,7 @@ class CaldavCalendar(BaseCalendar):
         for event in events:
             try:
                 vevent = event.vobject_instance.vevent
-                logger.debug (vevent)
+                logger.debug (repr(vevent))
                 results.append({
                     'id': str(vevent.uid.value),
                     'start': vevent.dtstart.value.isoformat(),
