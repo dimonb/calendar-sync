@@ -168,7 +168,11 @@ def process_source(source, calendars, session, time_min, time_max, failed_calend
                     continue
                 process_single_event_for_target(event, source, target, session, failed_calendars)
 
-    cleanup_orphans(source, calendars, session, ids)
+    with tracer.start_as_current_span(
+        "sync.cleanup_orphans",
+        attributes={"source_calendar": source.id},
+    ):
+        cleanup_orphans(source, calendars, session, ids)
 
 def main():
     with tracer.start_as_current_span("calendar-sync.run"):
