@@ -17,6 +17,13 @@ from structlog.dev import ConsoleRenderer
 from structlog.stdlib import ProcessorFormatter
 from typing import Any, MutableMapping, Mapping, Callable, Sequence
 
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+
 # --------------------------------------------------------------------------- #
 # 1. Load .env early                                                           #
 # --------------------------------------------------------------------------- #
@@ -33,6 +40,7 @@ if ENV_PATH.exists():
 class Settings(BaseSettings):
     # Opentelemetry / Uptrace
     uptrace_dsn: str = Field("", env="UPTRACE_DSN")
+    oltp_exporter_endpoint: str = Field("", env="OLTP_EXPORTER_ENDPOINT")
     deploy_env: str = Field("development", env="DEPLOY_ENV")
 
     # App-specific
@@ -100,8 +108,16 @@ def configure_logging() -> None:
     root.handlers[:] = [handler]
     root.setLevel(LOG_LEVEL_INT)
 
+    if settings.oltp_exporter_endpoint:
+        resource = Resource.create({SERVICE_NAME: "calendar-sync"})
+        trace.set_tracer_provider(TracerProvider(resource=resource))
+        # OTLP Exporter
+        otlp_exporter = OTLPSpanExporter(endpoint=settings.oltp_exporter_endpoint, insecure="true")
+        span_processor = BatchSpanProcessor(otlp_exporter)
+        trace.get_tracer_provider().add_span_processor(span_processor)
+
     # OpenTelemetry via Uptrace
-    if settings.uptrace_dsn:
+    elif settings.uptrace_dsn:
         uptrace.configure_opentelemetry(
             dsn=settings.uptrace_dsn,
             service_name="calendar-sync",
