@@ -8,7 +8,7 @@ schedule: "*/5 * * * *"
 uptrace:
   dsn: 
 
-oltpExporterEndpoint: "http://localhost:4317"
+oltpExporterEndpoint: "http://infra-tempo.infra:4317"
 
 deployEnv: "development"
 logLevel: "DEBUG"
