@@ -23,6 +23,12 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
+# ---- OTLP Log Exporter ----
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+
 
 # --------------------------------------------------------------------------- #
 # 1. Load .env early                                                           #
@@ -115,6 +121,14 @@ def configure_logging() -> None:
         otlp_exporter = OTLPSpanExporter(endpoint=settings.oltp_exporter_endpoint, insecure="true")
         span_processor = BatchSpanProcessor(otlp_exporter)
         trace.get_tracer_provider().add_span_processor(span_processor)
+
+        # ---- OTLP Log Exporter ----
+        logger_provider = LoggerProvider(resource=resource)
+        set_logger_provider(logger_provider)
+        log_exporter = OTLPLogExporter(endpoint=settings.oltp_exporter_endpoint, insecure=True)
+        logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+        log_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+        logging.getLogger().addHandler(log_handler)
 
     # OpenTelemetry via Uptrace
     elif settings.uptrace_dsn:
