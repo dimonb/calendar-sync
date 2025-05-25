@@ -8,7 +8,7 @@ schedule: "*/5 * * * *"
 uptrace:
   dsn: 
 
-oltpExporterEndpoint: "http://signoz-otel-collector.signoz:4317"
+#oltpExporterEndpoint: "http://signoz-otel-collector.signoz:4317"
 
 deployEnv: "development"
 logLevel: "DEBUG"
