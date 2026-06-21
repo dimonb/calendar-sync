@@ -85,8 +85,12 @@ class CaldavCalendar(BaseCalendar):
         return busy_id
 
     def _delete(self, cal, event_id):
+        # Delete directly by URL. We generate the UID ourselves and the server
+        # stores it at <calendar>/<uid>.ics, so we can skip cal.event(uid) which
+        # otherwise REPORTs and parses the whole calendar (very slow on Yandex).
+        event_url = str(cal.url).rstrip("/") + "/" + event_id + ".ics"
         try:
-            cal.event(event_id).delete()
+            cal.client.delete(event_url)
             logger.info(f"Deleted busy event {event_id}")
         except Exception:
             logger.exception(f"Failed to delete busy event {event_id}")
