@@ -34,6 +34,14 @@ class BaseCalendar(ABC):
         """Delete an event by its ID"""
         pass
 
+    def delete_main_event(self, event_id):
+        """Delete an event from the calendar's own id (never the busy calendar).
+
+        Defaults to delete_event; overridden by backends that support a
+        separate busy_calendar_id.
+        """
+        self.delete_event(event_id)
+
     @classmethod
     def get_calendar(cls, cfg):
         if cfg['type'] not in cls.class_registry:

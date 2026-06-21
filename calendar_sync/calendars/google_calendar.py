@@ -64,7 +64,8 @@ class GoogleCalendar(BaseCalendar):
                 'id': event['id'],
                 'start': event['start'].get('dateTime', event['start'].get('date')),
                 'end': event['end'].get('dateTime', event['end'].get('date')),
-                'summary': event.get('summary', '')
+                'summary': event.get('summary', ''),
+                'description': event.get('description', '')
             })
         return results
 
@@ -81,11 +82,17 @@ class GoogleCalendar(BaseCalendar):
         created_event = self.service.events().insert(calendarId=target_cal, body=event).execute()
         return created_event['id']
 
-    def delete_event(self, event_id):
-        """Delete an event by its ID"""
+    def _delete(self, calendar_id, event_id):
         try:
-            target_cal = self.busy_calendar_id or self.id
-            self.service.events().delete(calendarId=target_cal, eventId=event_id).execute()
-            logger.info(f"Deleted busy event {event_id}")
+            self.service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+            logger.info(f"Deleted busy event {event_id} from {calendar_id}")
         except Exception:
-            logger.exception(f"Failed to delete busy event {event_id}")
+            logger.exception(f"Failed to delete busy event {event_id} from {calendar_id}")
+
+    def delete_event(self, event_id):
+        """Delete a busy event (from the busy calendar if configured)."""
+        self._delete(self.busy_calendar_id or self.id, event_id)
+
+    def delete_main_event(self, event_id):
+        """Delete an event from this calendar's own id (never the busy calendar)."""
+        self._delete(self.id, event_id)

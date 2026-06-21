@@ -21,6 +21,9 @@ def load_calendars():
             calendars.append(BaseCalendar.get_calendar(calendar_cfg))
         return calendars
 
+MANAGED_MARKER = "Managed-by: calendar-sync"
+
+
 def process_busy_event(event, source, session):
     summary = event.get("summary", "")
     if summary.lower().strip() != "busy":
@@ -30,6 +33,34 @@ def process_busy_event(event, source, session):
     start = event.get("start")
     end = event.get("end")
     logger.info(f"Busy event: {event.get('id')} {start} - {end}")
+
+    # When a dedicated busy calendar is configured, our managed Busy events must
+    # not stay on the main calendar. Remove ours from the main calendar and drop
+    # the mapping so it gets recreated on the busy calendar on a later pass.
+    if source.busy_calendar_id:
+        if MANAGED_MARKER in (event.get("description") or ""):
+            logger.info(f"Removing busy event {event['id']} from main calendar {source.id} (busy calendar configured)")
+            with tracer.start_as_current_span(
+                "sync.remove_main_busy_event",
+                attributes={"target_calendar": source.id, "busy_event_id": event["id"]},
+            ):
+                try:
+                    source.delete_main_event(event["id"])
+                except Exception:
+                    logger.exception(f"Failed to remove busy event {event['id']} from main calendar {source.id}")
+            mapping = session.query(EventMapping).filter_by(
+                target_calendar=source.id,
+                busy_event_id=event["id"],
+            ).first()
+            if mapping:
+                try:
+                    session.delete(mapping)
+                    session.commit()
+                except Exception:
+                    session.rollback()
+                    logger.exception(f"Failed to drop mapping for busy event {event['id']} in {source.id}")
+        return True
+
     mapping = session.query(EventMapping).filter_by(
         target_calendar=source.id,
         busy_event_id=event["id"],
