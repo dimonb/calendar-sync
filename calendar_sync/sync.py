@@ -100,10 +100,12 @@ def process_single_event_for_target(event, source, target, session, failed_calen
                 mapping.last_synced_time = datetime.now(timezone.utc)
                 session.commit()
             except Exception:
+                session.rollback()
                 logger.exception(f"Failed to recreate busy event in {target.id}")
         else:
             logger.debug(f"Busy event already exists for {event['id']} in {target.id}")
     except Exception:
+        session.rollback()
         logger.exception(f"Failed to create busy event in {target.id}")
         failed_calendars.add(target.id)
 
@@ -123,6 +125,7 @@ def cleanup_orphans(source, calendars, session, existing_ids):
             session.delete(mapping)
             session.commit()
         except Exception:
+            session.rollback()
             logger.exception(f"Failed to delete orphan busy event {mapping.busy_event_id} in {source.id}")
 
 def process_source(source, calendars, session, time_min, time_max, failed_calendars):
