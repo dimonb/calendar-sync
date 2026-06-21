@@ -14,6 +14,10 @@ class BaseCalendar(ABC):
 
     def __init__(self, cfg):
         self.onlysource = cfg.get('onlysource', False)
+        # Optional separate calendar to hold the generated "Busy" events.
+        # When set, busy events are created/deleted there instead of on the
+        # calendar's own id (list_events still reads the real calendar).
+        self.busy_calendar_id = cfg.get('busy_calendar_id')
 
     @abstractmethod
     def list_events(self, time_min, time_max):

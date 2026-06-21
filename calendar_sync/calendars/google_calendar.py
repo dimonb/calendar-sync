@@ -77,13 +77,15 @@ class GoogleCalendar(BaseCalendar):
             'end': {'dateTime': end, 'timeZone': 'UTC'},
             'transparency': 'opaque'
         }
-        created_event = self.service.events().insert(calendarId=self.id, body=event).execute()
+        target_cal = self.busy_calendar_id or self.id
+        created_event = self.service.events().insert(calendarId=target_cal, body=event).execute()
         return created_event['id']
 
     def delete_event(self, event_id):
         """Delete an event by its ID"""
         try:
-            self.service.events().delete(calendarId=self.id, eventId=event_id).execute()
+            target_cal = self.busy_calendar_id or self.id
+            self.service.events().delete(calendarId=target_cal, eventId=event_id).execute()
             logger.info(f"Deleted busy event {event_id}")
         except Exception:
             logger.exception(f"Failed to delete busy event {event_id}")
