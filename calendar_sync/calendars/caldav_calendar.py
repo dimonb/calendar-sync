@@ -23,6 +23,11 @@ class CaldavCalendar(BaseCalendar):
         )
         self.principal = self.client.principal()
         self.calendar = self.principal.calendars()[0]  # TODO: implement calendar selection
+        # Optional separate calendar (by URL) to hold the generated Busy events.
+        if self.busy_calendar_id:
+            self.busy_calendar = self.client.calendar(url=self.busy_calendar_id)
+        else:
+            self.busy_calendar = self.calendar
 
     def list_events(self, time_min, time_max):
         """Return a list of events in the format [{'id': str, 'start': str, 'end': str}]"""
@@ -47,7 +52,8 @@ class CaldavCalendar(BaseCalendar):
                     'start': vevent.dtstart.value.isoformat(),
                     'end': vevent.dtend.value.isoformat(),
                     'summary': vevent.summary.value,
-                    'object': event 
+                    'description': str(vevent.description.value) if hasattr(vevent, 'description') else '',
+                    'object': event
                 })
             except Exception:
                 logger.exception("Failed to parse event")
@@ -75,17 +81,23 @@ class CaldavCalendar(BaseCalendar):
 
         busy_ics = cal.to_ical()
 
-        self.calendar.add_event(busy_ics)
+        self.busy_calendar.add_event(busy_ics)
         return busy_id
 
-    def delete_event(self, event_id):
-        """Delete an event by its ID"""
+    def _delete(self, cal, event_id):
         try:
-            event = self.calendar.event(event_id)
-            event.delete()
+            cal.event(event_id).delete()
             logger.info(f"Deleted busy event {event_id}")
         except Exception:
             logger.exception(f"Failed to delete busy event {event_id}")
+
+    def delete_event(self, event_id):
+        """Delete a busy event (from the busy calendar if configured)."""
+        self._delete(self.busy_calendar, event_id)
+
+    def delete_main_event(self, event_id):
+        """Delete an event from the main calendar (never the busy calendar)."""
+        self._delete(self.calendar, event_id)
 
 
 BaseCalendar.register(CaldavCalendar)
