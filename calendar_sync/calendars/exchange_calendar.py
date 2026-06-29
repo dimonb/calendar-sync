@@ -39,6 +39,7 @@ from exchangelib import (
     CalendarItem,
     Configuration,
     EWSDateTime,
+    EWSTimeZone,
     OAuth2AuthorizationCodeCredentials,
 )
 from exchangelib.errors import ErrorItemNotFound
@@ -49,6 +50,9 @@ from calendar_sync.calendars.base import BaseCalendar
 logger = logging.getLogger(__name__)
 
 EWS_ENDPOINT = "https://outlook.office365.com/EWS/Exchange.asmx"
+# exchangelib's EWSDateTime.astimezone() only accepts an EWSTimeZone (not stdlib
+# datetime.timezone.utc), so use this for all EWSDateTime tz conversions.
+_UTC = EWSTimeZone("UTC")
 # Keep in sync with the SCOPE used by the mint scripts — acquire_token_silent
 # must request the same scope the cached refresh token was minted for.
 SCOPES = ["https://outlook.office365.com/EWS.AccessAsUser.All"]
@@ -159,12 +163,12 @@ class ExchangeCalendar(BaseCalendar):
         dt = date_parser.isoparse(value)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        return EWSDateTime.from_datetime(dt.astimezone(timezone.utc))
+        return EWSDateTime.from_datetime(dt.astimezone(timezone.utc)).astimezone(_UTC)
 
     @staticmethod
     def _to_iso(dt):
         """Format an EWSDateTime as an ISO-8601 UTC string (with 'T')."""
-        return dt.astimezone(timezone.utc).isoformat()
+        return dt.astimezone(_UTC).isoformat()
 
     # -- API ----------------------------------------------------------------
     def list_events(self, time_min, time_max):

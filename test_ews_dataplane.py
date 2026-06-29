@@ -24,9 +24,12 @@ from exchangelib import (
     CalendarItem,
     Configuration,
     EWSDateTime,
+    EWSTimeZone,
     OAuth2AuthorizationCodeCredentials,
 )
 from exchangelib.items import SEND_TO_NONE
+
+_UTC = EWSTimeZone("UTC")
 
 CREDS = os.environ.get("CREDS_OUT", "exchange_client.json")
 TOKEN = os.environ.get("OUT", "dimonb-token-outlook-ews.json")
@@ -65,10 +68,24 @@ def main():
     print(f"✅ connected to mailbox {creds['primary_smtp_address']} via EWS")
 
     now = datetime.now(timezone.utc)
-    start = EWSDateTime.from_datetime(now)
-    end = EWSDateTime.from_datetime(now + timedelta(days=2))
-    n = account.calendar.view(start=start, end=end).only("id", "start", "end").count()
-    print(f"✅ READ: {n} event instance(s) in the next 2 days")
+    start = EWSDateTime.from_datetime(now).astimezone(_UTC)
+    end = EWSDateTime.from_datetime(now + timedelta(days=14)).astimezone(_UTC)
+    # Exercise the SAME formatting path as ExchangeCalendar.list_events (this is
+    # what the in-cluster run hit a bug on: .astimezone() on an EWSDateTime).
+    n = 0
+    for ev in account.calendar.view(start=start, end=end).only(
+        "id", "subject", "start", "end", "is_all_day", "is_cancelled", "body"
+    ):
+        if getattr(ev, "is_cancelled", False):
+            continue
+        if getattr(ev, "is_all_day", False):
+            s = ev.start.date().isoformat() if hasattr(ev.start, "date") else str(ev.start)
+        else:
+            s = ev.start.astimezone(_UTC).isoformat()  # the line that used to crash
+        n += 1
+        if n <= 3:
+            print(f"     - {s} | {(ev.subject or '')[:40]}")
+    print(f"✅ READ+FORMAT: {n} event instance(s) in the next 14 days (formatting OK)")
 
     # create
     s = EWSDateTime.from_datetime((now + timedelta(days=1)).replace(microsecond=0))
