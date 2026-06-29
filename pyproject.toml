@@ -25,6 +25,8 @@ pytest = "^8.3.5"
 
 [tool.poetry.dependencies]
 caldav = "^1.4.0"
+msal = "^1.31.0"
+exchangelib = "^5.6.0"
 google-api-python-client = "^2.169.0"
 pytz = "^2025.2"
 icalendar = "^6.2.0"

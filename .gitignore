@@ -178,3 +178,13 @@ calendar_sync.db
 *secret*.json
 .kube_config
 .dockerconfigjson
+
+# calendar-sync secrets / minted artifacts
+exchange_client.json
+dimonb-token-outlook-ews.json
+.ews_authcode_flow.json
+outlook_client.json
+# copied macOS account store (sensitive — local only)
+Accounts4.sqlite
+Accounts4.sqlite-shm
+Accounts4.sqlite-wal
