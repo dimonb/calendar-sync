@@ -8,6 +8,7 @@ from calendar_sync.utils.time import get_time_window
 from calendar_sync.utils.env import load_env
 from calendar_sync.calendars.base import BaseCalendar
 from opentelemetry import trace
+from sqlalchemy.exc import IntegrityError
 
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,14 @@ def load_calendars():
     with tracer.start_as_current_span("sync.load_calendars"):
         calendars = []
         for calendar_cfg in yaml_config.get("calendars", []):
-            calendars.append(BaseCalendar.get_calendar(calendar_cfg))
+            try:
+                calendars.append(BaseCalendar.get_calendar(calendar_cfg))
+            except Exception:
+                # One broken account (e.g. an expired/revoked token) must not take
+                # down the whole sync run — skip it and continue with the rest.
+                logger.exception(
+                    f"Failed to initialize calendar {calendar_cfg.get('id') or calendar_cfg.get('url')}; skipping"
+                )
         return calendars
 
 MANAGED_MARKER = "Managed-by: calendar-sync"
@@ -77,6 +85,28 @@ def process_busy_event(event, source, session):
                 logger.exception(f"Failed to delete orphan busy event {event['id']} in {source.id}")
     return True
 
+def _recreate_busy_event(mapping, event, target, session):
+    """Delete the old busy event for *mapping* and recreate it with current times."""
+    try:
+        with tracer.start_as_current_span(
+            "sync.delete_old_busy_event",
+            attributes={"target_calendar": target.id, "busy_event_id": mapping.busy_event_id},
+        ):
+            target.delete_event(mapping.busy_event_id)
+    except Exception:
+        logger.exception("Failed to delete old busy event before update")
+    with tracer.start_as_current_span(
+        "sync.update_busy_event",
+        attributes={"target_calendar": target.id, "source_event_id": event["id"]},
+    ):
+        busy_event_id = target.create_busy_event(event["start"], event["end"], source_event_id=event["id"])
+    mapping.busy_event_id = busy_event_id
+    mapping.start_time = event["start"]
+    mapping.end_time = event["end"]
+    mapping.last_synced_time = datetime.now(timezone.utc)
+    session.commit()
+
+
 def process_single_event_for_target(event, source, target, session, failed_calendars):
     start = event["start"]
     end = event["end"]
@@ -89,14 +119,14 @@ def process_single_event_for_target(event, source, target, session, failed_calen
             source_event_id=event["id"],
             target_calendar=target.id,
         ).first()
-        if not mapping:
+        if mapping is None:
             logger.info(f"Creating busy event in {target.id} for source event {event['id']}")
             with tracer.start_as_current_span(
                 "sync.create_busy_event",
                 attributes={"target_calendar": target.id, "source_event_id": event["id"]},
             ):
                 busy_event_id = target.create_busy_event(start, end, source_event_id=event["id"])
-            new_mapping = EventMapping(
+            session.add(EventMapping(
                 source_calendar=source.id,
                 source_event_id=event["id"],
                 target_calendar=target.id,
@@ -104,35 +134,32 @@ def process_single_event_for_target(event, source, target, session, failed_calen
                 last_synced_time=datetime.now(timezone.utc),
                 start_time=start,
                 end_time=end,
-            )
-            session.add(new_mapping)
-            session.commit()
+            ))
+            try:
+                session.commit()
+            except IntegrityError:
+                # A mapping for this (source, event, target) already exists that our
+                # read did not return. Don't fail the whole calendar: drop the
+                # duplicate busy event we just created and reconcile against the
+                # existing mapping instead.
+                session.rollback()
+                logger.warning(
+                    f"Mapping already exists for {event['id']} in {target.id}; reconciling existing busy event"
+                )
+                try:
+                    target.delete_event(busy_event_id)
+                except Exception:
+                    logger.exception(f"Failed to remove duplicate busy event {busy_event_id} in {target.id}")
+                existing = session.query(EventMapping).filter_by(
+                    source_calendar=source.id,
+                    source_event_id=event["id"],
+                    target_calendar=target.id,
+                ).first()
+                if existing is not None and (existing.start_time != start or existing.end_time != end):
+                    _recreate_busy_event(existing, event, target, session)
         elif mapping.start_time != start or mapping.end_time != end:
             logger.info(f"Event {event['id']} changed, deleting old busy and recreating")
-            # delete old busy event
-            try:
-                with tracer.start_as_current_span(
-                    "sync.delete_old_busy_event",
-                    attributes={"target_calendar": target.id, "busy_event_id": mapping.busy_event_id},
-                ):
-                    target.delete_event(mapping.busy_event_id)
-            except Exception:
-                logger.exception("Failed to delete old busy event before update")
-            # create updated busy event
-            try:
-                with tracer.start_as_current_span(
-                    "sync.update_busy_event",
-                    attributes={"target_calendar": target.id, "source_event_id": event["id"]},
-                ):
-                    busy_event_id = target.create_busy_event(start, end, source_event_id=event["id"])
-                mapping.busy_event_id = busy_event_id
-                mapping.start_time = start
-                mapping.end_time = end
-                mapping.last_synced_time = datetime.now(timezone.utc)
-                session.commit()
-            except Exception:
-                session.rollback()
-                logger.exception(f"Failed to recreate busy event in {target.id}")
+            _recreate_busy_event(mapping, event, target, session)
         else:
             logger.debug(f"Busy event already exists for {event['id']} in {target.id}")
     except Exception:

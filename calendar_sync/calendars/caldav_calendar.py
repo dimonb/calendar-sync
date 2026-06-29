@@ -47,11 +47,21 @@ class CaldavCalendar(BaseCalendar):
             try:
                 vevent = event.vobject_instance.vevent
                 logger.debug (repr(vevent))
+                uid = str(vevent.uid.value)
+                start = vevent.dtstart.value.isoformat()
+                summary = vevent.summary.value
+                # Recurring events are expanded (expand=True) into instances that
+                # all share a single UID. Disambiguate each occurrence by its start
+                # so every instance maps to its own busy event instead of colliding
+                # on the (source, source_event_id, target) key. Our own managed
+                # "Busy" events keep their plain UID so cleanup still matches them
+                # against the stored busy_event_id.
+                event_id = uid if summary.strip().lower() == 'busy' else f"{uid}#{start}"
                 results.append({
-                    'id': str(vevent.uid.value),
-                    'start': vevent.dtstart.value.isoformat(),
+                    'id': event_id,
+                    'start': start,
                     'end': vevent.dtend.value.isoformat(),
-                    'summary': vevent.summary.value,
+                    'summary': summary,
                     'description': str(vevent.description.value) if hasattr(vevent, 'description') else '',
                     'object': event
                 })

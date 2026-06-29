@@ -2,7 +2,6 @@ import os
 import logging
 import uuid
 from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from calendar_sync.calendars.base import BaseCalendar
@@ -39,11 +38,13 @@ class GoogleCalendar(BaseCalendar):
                 creds = None
 
         if not creds or not creds.valid:
-            logger.info(f"Starting new OAuth2 flow for {self.id}...")
-            flow = InstalledAppFlow.from_client_secrets_file(self.credentials_path, SCOPES)
-            creds = flow.run_local_server(port=0)
-            with open(self.token_path, 'w') as token_file:
-                token_file.write(creds.to_json())
+            # Running headless (service/cron): never fall back to an interactive
+            # browser flow — it cannot work in a container and would crash the
+            # whole sync. Fail loudly so a single bad token can be re-minted.
+            raise RuntimeError(
+                f"No valid OAuth2 credentials for {self.id}: token at {self.token_path} "
+                f"is missing, expired or revoked. Re-mint it (see mint_token.py) and redeploy."
+            )
 
         return build('calendar', 'v3', credentials=creds)
 
