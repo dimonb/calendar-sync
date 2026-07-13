@@ -105,7 +105,11 @@ calendars:
     token_path: /data/token.json
     onlysource: true
   - type: outlook
-    id: your-outlook-calendar-id
+    id: you@yourcompany.com
+    credentials_path: /data/outlook_client.json
+    token_path: /data/token_outlook.json
+    # graph_calendar_id: <id>   # optional: read a non-primary calendar
+    # busy_calendar_id: <id>    # optional: write Busy events to a separate calendar
   - type: caldav
     url: https://caldav.example.com/user/calendars/personal/
 
@@ -117,6 +121,7 @@ sync_window_days: 14
 Notes:
 - For Google Calendar integration, you must provide valid `credentials_path` and `token_path` (see Google documentation for preparing OAuth credentials).
 - For CalDAV support, you must provide the `url`, `username`, and `password` in the calendar block.
+- For Outlook / Microsoft 365 integration, you must provide `credentials_path` (Azure app registration) and `token_path` (MSAL token cache). See the [Outlook setup](#microsoft-365--outlook-setup) section below.
 
 ---
 
@@ -185,6 +190,52 @@ Feel free to use and modify.
 
 - **CalDAV setup:**
   - Some CalDAV providers require app-specific passwords or two-factor authentication adjustments. Make sure your credentials work in your CalDAV client before using them in calendar-sync.
+  - CalDAV is **not** supported for Microsoft 365 / Outlook.com (Microsoft removed it). Use the `outlook` type instead.
+
+### Microsoft 365 / Outlook setup
+
+The `outlook` backend uses the Microsoft Graph API with delegated OAuth2 (MSAL).
+It supports both reading events and creating/deleting `Busy` events.
+
+**1. Register an app in Azure (Entra)**
+
+In the [Azure portal](https://portal.azure.com) → *App registrations* → *New registration*:
+
+- Supported account types: *Accounts in this organizational directory only* (single tenant) is fine for a work/school account.
+- Under **Authentication**: set *Allow public client flows* = **Yes** (required for the device-code login).
+- Under **API permissions**: add *Microsoft Graph → Delegated → `Calendars.ReadWrite`*, then grant consent. (`offline_access` is requested automatically so the refresh token persists.)
+
+Copy the **Application (client) ID** and **Directory (tenant) ID**.
+
+**2. Create the credentials file**
+
+```json
+{ "client_id": "<application-client-id>", "tenant_id": "<directory-tenant-id>" }
+```
+
+Save it as e.g. `outlook_client.json` and point `credentials_path` at it.
+
+**3. Mint the token cache (once, interactively)**
+
+```bash
+.venv-auth/bin/python mint_outlook_token.py
+```
+
+It prints a URL and a code — open the URL, sign in as the target account, grant
+access. The token cache is written to `token_path` (e.g. `dimonb-token-outlook.json`)
+and refreshed silently on every sync afterwards. In Kubernetes, mount this file
+(and `outlook_client.json`) into `/data` via a secret.
+
+**Config fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | yes | Unique label for this calendar (use the account's email). |
+| `credentials_path` | yes | Path to the `{client_id, tenant_id}` JSON. |
+| `token_path` | yes | Path to the MSAL token cache (created by `mint_outlook_token.py`). |
+| `graph_calendar_id` | no | Graph calendar id to read from; defaults to the primary calendar. |
+| `busy_calendar_id` | no | Graph calendar id to write `Busy` events to. |
+| `onlysource` | no | `true` = read only, never create `Busy` events here. |
 
 - **How do I only sync FROM one calendar?**
   - Use `onlysource: true` in the config.
