@@ -1,0 +1,21 @@
+# calendar-sync deploy base — rendered by ArgoCD (k8s-dibot
+# gitops/apps/calendar-sync.yaml) off the CI-materialised `deploy/main` branch,
+# where the `newTag` below is rewritten from the `latest` placeholder to the
+# built commit SHA. Deploys into namespace calendar-sync.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: calendar-sync
+
+resources:
+  - pvc.yaml
+  - externalsecret.yaml
+  - cronjob.yaml
+
+# `newTag: latest` is the inert placeholder on `main`; the CI `promote` job
+# rewrites it to the commit SHA on the generated `deploy/main` branch (see
+# .github/workflows/deploy.yaml), so `main` history stays free of image-bump
+# churn while the deployed tag is immutable and git-tracked.
+images:
+  - name: ghcr.io/dimonb/calendar-sync/calendar-sync
+    newTag: latest

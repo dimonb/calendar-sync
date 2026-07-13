@@ -1,0 +1,75 @@
+# calendar-sync — mirrors calendar "busy" events between calendars, every 5 min.
+#
+# GitOps deploy (GEH/wit-style): the image tag is pinned by kustomize's `images:`
+# block in kustomization.yaml. On `main` that tag is the inert `latest`
+# placeholder; the CI `promote` job rewrites it to the built commit SHA on the
+# generated `deploy/main` branch, which ArgoCD reconciles. So the running version
+# is immutable and git-tracked (rollback = revert the bump commit) — hence
+# imagePullPolicy: IfNotPresent, not the old :latest + Always.
+#
+# Config/creds are mounted from ExternalSecret-materialised secrets (Infisical
+# /calendar-sync); OAuth tokens + the sqlite DB live on the adopted PVC (not git).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: calendar-sync
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 600
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: calendar-sync
+              # Tag is set by kustomize (see kustomization.yaml `images:`).
+              image: "ghcr.io/dimonb/calendar-sync/calendar-sync:latest"
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: OLTP_EXPORTER_ENDPOINT
+                  value: ""
+                - name: CONFIG_PATH
+                  value: "/data/config.yaml"
+                - name: UPTRACE_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      name: calendar-sync-env
+                      key: UPTRACE_DSN
+                - name: DEPLOY_ENV
+                  value: "production"
+                - name: LOG_LEVEL
+                  value: "DEBUG"
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: config
+                  mountPath: /data/config.yaml
+                  subPath: config.yaml
+                - name: google-creds
+                  mountPath: /data/google_client_secret.json
+                  subPath: google_client_secret.json
+                - name: google-creds2
+                  mountPath: /data/google_client_secret2.json
+                  subPath: google_client_secret2.json
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+          volumes:
+            - name: config
+              secret:
+                secretName: calendar-sync-config
+            - name: google-creds
+              secret:
+                secretName: calendar-sync-secrets
+            - name: google-creds2
+              secret:
+                secretName: calendar-sync-secrets2
+            - name: data
+              persistentVolumeClaim:
+                claimName: calendar-sync-pvc

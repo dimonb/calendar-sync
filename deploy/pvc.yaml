@@ -1,0 +1,15 @@
+# OAuth tokens (/data/*-token-*.json) + sqlite event_mappings DB. Adopted as-is
+# from the pre-migration PVC (openebs-hostpath, RWO) — data preserved.
+# volumeName/storageClassName are ignored by the ArgoCD Application so it doesn't
+# fight the binding controller on the already-bound claim.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: calendar-sync-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: openebs-hostpath
+  resources:
+    requests:
+      storage: 1Gi

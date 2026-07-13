@@ -1,8 +1,13 @@
-# Build-only: since 2026-07-13 the k8s deploy lives in the k8s-dibot git-lane
-# (ArgoCD app calendar-sync → kustomize/calendar-sync; secrets on Infisical
-# /calendar-sync). This workflow just builds+pushes the image; the CronJob there
-# re-pulls :latest every run. No kubeconfig/helm deploy here anymore.
-name: Build Calendar Sync image
+# Build + GitOps promote (GEH/wit-style). On push to main:
+#   1. test → build+push the image to GHCR, tagged with the immutable commit SHA
+#      (plus :hash and :latest for convenience).
+#   2. promote → pin deploy/kustomization.yaml's `newTag` to that SHA and
+#      force-update the generated `deploy/main` branch. main history stays free of
+#      image-bump churn (the placeholder there stays `latest`).
+# ArgoCD (k8s-dibot gitops/apps/calendar-sync.yaml) reconciles `deploy/main`, so
+# the running version is pinned and git-tracked — rollback = revert the bump
+# commit. Secrets stay on Infisical /calendar-sync via ExternalSecrets.
+name: Build & promote Calendar Sync
 
 on:
   push:
@@ -78,4 +83,39 @@ jobs:
           ghcr.io/${{ github.repository }}/calendar-sync:${{ steps.vars.outputs.hash }}
           ghcr.io/${{ github.repository }}/calendar-sync:latest
         cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache 
+        cache-to: type=local,dest=/tmp/.buildx-cache
+
+  # Materialize the generated deploy/main branch (pins the image tag to this
+  # commit SHA) that ArgoCD tracks. Only on push to main; main history stays free
+  # of image-bump commits — the placeholder there stays `newTag: latest`.
+  promote:
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      DEPLOY_BRANCH: deploy/main
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Materialize deploy/main with pinned image tag
+        run: |
+          set -euo pipefail
+          git fetch origin "${DEPLOY_BRANCH}:refs/remotes/origin/${DEPLOY_BRANCH}" || true
+          git switch --detach "${GITHUB_SHA}"
+          # Rewrite the single `newTag:` placeholder in the deploy overlay to the
+          # promoted commit SHA (matches the built ghcr tag above).
+          sed -i "s|^    newTag: .*|    newTag: ${GITHUB_SHA}|" deploy/kustomization.yaml
+          git config user.name "calendar-sync-image-bot"
+          git config user.email "calendar-sync-image-bot@users.noreply.github.com"
+          git add deploy/kustomization.yaml
+          git commit --allow-empty -m "chore(deploy): promote calendar-sync ${GITHUB_SHA::7}"
+          remote_sha="$(git rev-parse --verify "refs/remotes/origin/${DEPLOY_BRANCH}" 2>/dev/null || true)"
+          if [ -n "$remote_sha" ]; then
+            git push --force-with-lease="refs/heads/${DEPLOY_BRANCH}:${remote_sha}" origin HEAD:"refs/heads/${DEPLOY_BRANCH}"
+          else
+            git push origin HEAD:"refs/heads/${DEPLOY_BRANCH}"
+          fi
