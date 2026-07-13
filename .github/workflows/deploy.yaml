@@ -1,4 +1,8 @@
-name: Deploy Calendar Sync Chart to Kubernetes
+# Build-only: since 2026-07-13 the k8s deploy lives in the k8s-dibot git-lane
+# (ArgoCD app calendar-sync → kustomize/calendar-sync; secrets on Infisical
+# /calendar-sync). This workflow just builds+pushes the image; the CronJob there
+# re-pulls :latest every run. No kubeconfig/helm deploy here anymore.
+name: Build Calendar Sync image
 
 on:
   push:
@@ -74,30 +78,4 @@ jobs:
           ghcr.io/${{ github.repository }}/calendar-sync:${{ steps.vars.outputs.hash }}
           ghcr.io/${{ github.repository }}/calendar-sync:latest
         cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache
-
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v3 
-      with:
-        version: 'latest'
-
-    - name: Set up Helm
-      uses: azure/setup-helm@v4.3.0
-      with:
-        version: 'latest'
-
-    - name: Write kubeconfig
-      run: |
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > ~/.kube/config
-        chmod 600 ~/.kube/config
-
-    - name: Deploy to Kubernetes
-      run: |
-        helm upgrade --create-namespace -n calendar-sync calendar-sync charts/calendar-sync \
-          --set-string config.content=${{ secrets.CALENDAR_SYNC_CONFIG }} \
-          --set-string secrets.googleCredentialsSecret.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
-          --set-string secrets.googleCredentialsSecret2.data.google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET2 }} \
-          --set-string uptrace.dsn=${{ secrets.UPTRACE_DSN }} \
-          --set-string image.tag=${{ steps.vars.outputs.hash }} \
-          --set-string deployEnv=production 
+        cache-to: type=local,dest=/tmp/.buildx-cache 
