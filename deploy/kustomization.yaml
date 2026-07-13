@@ -18,4 +18,4 @@ resources:
 # churn while the deployed tag is immutable and git-tracked.
 images:
   - name: ghcr.io/dimonb/calendar-sync/calendar-sync
-    newTag: latest
+    newTag: 06db782f985d4dffcd7fcb03c99315253fd1be41
