@@ -42,6 +42,17 @@ class BaseCalendar(ABC):
         """
         self.delete_event(event_id)
 
+    @staticmethod
+    def calendar_id(cfg):
+        """The `.id` a calendar built from *cfg* will carry.
+
+        Mirrors what the backends assign in __init__, so callers can resolve a
+        stored mapping's calendar without instantiating (and authenticating) it.
+        """
+        if cfg.get('type') == 'caldav':
+            return f"caldav-{cfg['url']}"
+        return cfg.get('id')
+
     @classmethod
     def get_calendar(cls, cfg):
         if cfg['type'] not in cls.class_registry:

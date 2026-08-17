@@ -167,14 +167,39 @@ def process_single_event_for_target(event, source, target, session, failed_calen
         logger.exception(f"Failed to create busy event in {target.id}")
         failed_calendars.add(target.id)
 
-def cleanup_orphans(source, calendars, session, existing_ids):
+def configured_calendar_ids():
+    return {BaseCalendar.calendar_id(cfg) for cfg in yaml_config.get("calendars", [])}
+
+
+def cleanup_orphans(source, calendars, session, existing_ids, configured_ids=None):
+    if configured_ids is None:
+        configured_ids = configured_calendar_ids()
     stored = session.query(EventMapping).filter_by(source_calendar=source.id).all()
     for mapping in stored:
         if mapping.source_event_id in existing_ids or source.onlysource:
             continue
         logger.info(f"Deleting orphan busy event {mapping.busy_event_id} from {source.id}")
         try:
-            target_cal = next(c for c in calendars if c.id == mapping.target_calendar)
+            target_cal = next((c for c in calendars if c.id == mapping.target_calendar), None)
+            if target_cal is None:
+                if mapping.target_calendar in configured_ids:
+                    # Still configured, just unavailable this run (e.g. a token
+                    # refresh blip) — keep the mapping and retry once it loads.
+                    logger.warning(
+                        f"Target calendar {mapping.target_calendar} unavailable; "
+                        f"keeping mapping for busy event {mapping.busy_event_id}"
+                    )
+                    continue
+                # Dropped from the config for good (e.g. a deleted account):
+                # there is nothing left to delete remotely, so retiring the
+                # mapping is the only way it ever stops being retried.
+                logger.info(
+                    f"Target calendar {mapping.target_calendar} is no longer configured; "
+                    f"dropping stale mapping for busy event {mapping.busy_event_id}"
+                )
+                session.delete(mapping)
+                session.commit()
+                continue
             with tracer.start_as_current_span(
                 "sync.delete_orphan_busy_event",
                 attributes={"target_calendar": target_cal.id, "busy_event_id": mapping.busy_event_id},

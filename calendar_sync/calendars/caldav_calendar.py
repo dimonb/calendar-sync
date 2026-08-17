@@ -15,7 +15,7 @@ class CaldavCalendar(BaseCalendar):
         self.url = cfg['url']
         self.username = cfg['username']
         self.password = cfg['password']
-        self.id = f"caldav-{self.url}"
+        self.id = self.calendar_id(cfg)
         self.client = DAVClient(
             self.url,
             username=self.username,
