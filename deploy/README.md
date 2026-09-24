@@ -41,11 +41,11 @@ minutes.
 | `kustomization.yaml` | resources + `images:` tag pin (the promote target) |
 | `cronjob.yaml` | the `*/5` sync CronJob |
 | `pvc.yaml` | adopted RWO claim — OAuth tokens + sqlite mapping DB |
-| `externalsecret.yaml` | config/creds/DSN from Infisical `/calendar-sync` via ESO |
+| `externalsecret.yaml` | config/creds/DSN from OpenBao `kv/calendar-sync` via ESO |
 
 ## Secrets
 
-Not in git. `ExternalSecret`s pull from the self-hosted Infisical store
-`infisical-secret-store-calendar-sync` (folder `/calendar-sync`): keys
-`CALENDAR_SYNC_CONFIG`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CLIENT_SECRET2`,
-`UPTRACE_DSN`.
+Not in git. `ExternalSecret`s pull from the cluster's OpenBao through the
+`openbao-calendar-sync` ClusterSecretStore (kv v2 mount `kv`, path
+`calendar-sync`): properties `CALENDAR_SYNC_CONFIG`, `GOOGLE_CLIENT_SECRET`,
+`GOOGLE_CLIENT_SECRET2`, `UPTRACE_DSN`.
