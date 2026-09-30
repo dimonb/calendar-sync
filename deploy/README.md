@@ -39,7 +39,7 @@ minutes.
 | File | What |
 |------|------|
 | `kustomization.yaml` | resources + `images:` tag pin (the promote target) |
-| `cronjob.yaml` | the `*/5` sync CronJob |
+| `cronjob.yaml` | the `5-55/5` sync CronJob (no `:00` tick — see the note there) |
 | `pvc.yaml` | adopted RWO claim — OAuth tokens + sqlite mapping DB |
 | `externalsecret.yaml` | config/creds/DSN from OpenBao `kv/calendar-sync` via ESO |
 
