@@ -1,4 +1,5 @@
-# calendar-sync — mirrors calendar "busy" events between calendars, every 5 min.
+# calendar-sync — mirrors calendar "busy" events between calendars, every 5 min
+# (bar the :00 tick — see the note at spec.schedule).
 #
 # GitOps deploy (GEH/wit-style): the image tag is pinned by kustomize's `images:`
 # block in kustomization.yaml. On `main` that tag is the inert `latest`
@@ -14,7 +15,24 @@ kind: CronJob
 metadata:
   name: calendar-sync
 spec:
-  schedule: "*/5 * * * *"
+  # 5-55/5, not */5: no tick at :00 of any hour, so no job pod of ours is Running when the
+  # nightly Velero backup starts.
+  #
+  # The k8s-dibot Velero schedule velero-daily-backup ("0 3 * * *",
+  # kustomize/velero/velero-values.yaml) fired at 03:00:19 on 2026-09-30. The */5 pod
+  # started at 03:00:00 was still Running, so Velero anchored the calendar-sync-pvc
+  # PodVolumeBackup to it; the pod then exited (~81s) and kubelet removed its volume dir
+  # before the backup could mount it, the PVB was canceled, and the backup came back
+  # PartiallyFailed (PVB velero-daily-backup-20260930030019-xhglk).
+  #
+  # With no :00 tick the 02:55 run (longest observed 197s, so done by ~02:58) is already
+  # gone at backup start; Velero skips calendar-sync as not running and anchors the PVB to
+  # the Running velero-pvc-holder pod, which exists for exactly that.
+  #
+  # COUPLED to that Velero schedule: if velero-daily-backup moves off 03:00, this must move
+  # with it. Cost: a 10-minute sync gap once an hour (:55 -> :05) instead of 5.
+  # This is a MITIGATION, not a proven fix — only a natural Velero run confirms it.
+  schedule: "5-55/5 * * * *"
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
